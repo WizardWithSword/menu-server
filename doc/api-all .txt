@@ -1,0 +1,189 @@
+api 所有需要的接口一览：
+1.1.1、/shop/user/reg  注册。
+POST 
+{
+  username: '',
+  password: ''
+}
+{
+  code: 200,
+  message: ''
+}
+1.1.2、/shop/user/login 登录。
+POST
+{
+  username: '',
+  password: ''
+}
+{
+  code: 200,
+  message: '成功',
+  result: {
+     uid: '', // 用户id。
+     name: '', // nick
+     headerImg: '', // 头像
+     token: '',
+     restaurantsids: [{
+        rid: '', // 餐厅id
+        name: '', // 餐厅名字
+        desc: '', // 餐厅简要描述
+        openTime: '', // 营业时间。
+        priceUnit: '' // 菜品价格单位。 元， ￥， €
+     }] // 餐厅信息
+  }
+}
+1.1.3、/shop/user/detail 查看个人信息。
+GET
+1.1.4、/shop/user/edit 修改个人信息。
+POST
+1.2.5、/shop/restaurants/list 查看餐厅列表
+GET
+1.2.6、/shop/restaurants/edit 修改个人名下餐厅信息
+POST
+{
+  rid: '', // 餐厅id
+  name: '', // 餐厅名字
+  desc: '', // 餐厅简要描述
+  openTime: '', // 营业时间。
+  priceUnit: '' // 菜品价格单位。 元， ￥， €
+}
+{
+  code: 200,
+  message: ''
+}
+1.3.1、/shop/menu/list  查看菜单信息
+GET
+?rid='' // 餐厅信息
+[{
+  type: '', // 菜品类型：开胃菜。
+  title: '', // 菜品类型描述
+  imgurl: '', // 类型配图
+  foods: [{ // 此类型下所有的菜
+    fid: '', // 菜id
+    name: '', // 菜名。
+    desc: '', // 菜的描述
+    size: '', // 默认量
+    price: '', // 默认价格
+    imgurl: '', // 图片
+    standard: [{ // 菜品不同规格
+      size: '', // 此规格的大小或重量。 .5L  .25ml
+      price: '' // 此规格的价格
+    }]
+  }]
+}]
+1.3.2、/shop/menu/edit  修改菜单信息
+POST
+{
+  rid: '',
+  menu: [{
+    type: '', // 菜品类型：开胃菜。
+    title: '', // 菜品类型描述
+    imgurl: '', // 类型配图
+    foods: [{ // 此类型下所有的菜
+      fid: '', // 菜id. 已有id的菜，算修改。没有id的菜，算新增。
+      name: '', // 菜名。
+      desc: '', // 菜的描述
+      size: '', // 默认量
+      price: '', // 默认价格
+      imgurl: '', // 图片
+      standard: [{ // 菜品不同规格
+        size: '', // 此规格的大小或重量。 .5L  .25ml
+        price: '' // 此规格的价格
+      }]
+    }]
+  }]
+}
+{
+  code: 200,
+  message: '',
+  menu: [{}]
+}
+1.4.1、/shop/desk/list 查看桌号。
+GET
+rid='' // 餐厅id
+{
+  code: 200,
+  message: 'success',
+  result: ['A1', '2', '3']
+}
+1.4.2、/shop/desk/edit 编辑桌号。
+POST
+{
+  rid: '',
+  desks: ['A1', 'B1']
+}
+{
+  code: 200,
+  message: 'success'
+}
+1.5.1、/shop/order/list/end 查看已结束订单信息。
+GET
+{
+  rid: ''
+}
+{
+  code: 200,
+  message: '',
+  result: [{
+    oid: '',
+    time: '',
+    desk: '',
+    totalfee: '',
+    status: '20', // 1: 已下厨客户等待中... 2:菜品全部已上... 3:客户加菜... 4:新加菜品全部已上... 20:客户已结账
+    remark: '', // 本次订单特殊说明。
+    meal: [{
+      fid: '', // food id
+      name: '',
+      size: '',
+      num: '', // 这个菜点了几份
+      price: '',
+      status: '' // 当前菜的状态
+    }]
+  }]
+}
+1.5.2、/shop/order/list/ing 查看进行中订单信息。
+1.5.3、/shop/order/edit/status 修改进行中订单状态。
+
+
+2.1、/guest/menu/list 根据餐厅获取菜单。
+GET
+?rid=xxx // 餐厅id
+{
+  code: 200,
+  message: '',
+  result: [{}] 1.3.1
+}
+
+2.2、/guest/order/add 根据桌号加菜。(提交订单)
+POST
+{
+  rid: '', // 餐厅id
+  did: '', // 桌号
+  meal: [{
+    fid: '',
+    name: '',
+    size: '',
+    num: '', // 这个菜点了几份
+    price: '',
+    status: '' // 当前菜的状态。 -1: 购物车中
+  }, {}] // 所选的餐
+}
+{
+  code: 200,
+  message: ''
+}
+2.3、/guest/order/detail 获取查看当前已下单的菜、菜状态。
+GET
+?rid=''&did=''
+{
+  code: 200,
+  message: '',
+  meal: [{
+    fid: '',
+    name: '',
+    size: '',
+    num: '', // 这个菜点了几份
+    price: '',
+    status: '' // 当前菜的状态 1: 已下厨客户等待中... 2:菜品全部已上... 3:客户加菜... 4:新加菜品全部已上...
+  }]
+}

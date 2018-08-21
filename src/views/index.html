@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>用户点单系统</title>
+</head>
+<body>
+<div id="menu"></div>
+</body>
+<script type="text/javascript">
+// ajax 请求
+var apixhr = function (method, url, params) {
+  return this._init(method, url, params)
+}
+apixhr.prototype.done = function (res) {
+}
+apixhr.prototype.fail = function (res) {
+  console.log('请求失败', res)
+}
+apixhr.prototype._init = function (method, url, params) {
+  var that = this
+  var xhr = new XMLHttpRequest();
+  params = params === undefined ? '' : params
+  if (method === 'GET') {
+    var urlparams = '?'
+    Object.keys(params).map(function(key){
+      var tmp = key + '=' + params[key]
+      urlparams += tmp
+      urlparams += '&'
+    })
+    urlparams = urlparams.replace(/&$/, '')
+    url = url + urlparams
+  }
+  xhr.open(method, url, true)
+  xhr.setRequestHeader("Content-type","application/json")
+  // var token = dataLocal.get('tk')
+  // if (token) {
+  //   xhr.setRequestHeader('token', token)
+  // }
+  var promise = new Promise(function (resolve, reject) {
+    xhr.onreadystatechange = function () {
+      switch(xhr.readyState){
+        case 1://OPENED
+          //do something
+              break;
+        case 2://HEADERS_RECEIVED
+          //do something
+          break;
+        case 3://LOADING
+          //do something
+          break;
+        case 4://DONE
+          //do something
+          if (this.status == 200) {
+            that.done(JSON.parse(this.response))
+            resolve(JSON.parse(this.response))
+          } else {
+            that.fail(this)
+            reject(this)
+          }
+          break;
+      }
+    };
+    var body = typeof params === 'string' ? params : JSON.stringify(params)
+    xhr.send(body)
+  })
+  return promise
+}
+
+var allApi = {
+  getMenuLists: function (params) {
+    return new apixhr('GET', '/api/guest/menu/list', params)
+  },
+  getFoodsOrdered: function (params) {
+    return new apixhr('GET', '/api/guest/order/detail', params)
+  },
+  postAddFoods: function (params) {
+    return new apixhr('POST', '/api/guest/order/add', params)
+  },
+  postTest: function (params) {
+    return new apixhr('POST', '/api2/t', params)
+  }
+}
+
+var obj = {
+  rid: 'test'
+}
+allApi.getMenuLists(obj).then(function (res) {
+  document.getElementById('menu').innerHTML += JSON.stringify(res)
+})
+var obj2 = {
+  ss: 'ss2'
+}
+allApi.postAddFoods(obj2).then(function (res) {
+  document.getElementById('menu').innerHTML += JSON.stringify(res)
+})
+
+var obj3 = {
+  s3: 'ss3'
+}
+allApi.getFoodsOrdered(obj3).then(function (res) {
+  document.getElementById('menu').innerHTML += JSON.stringify(res)
+})
+
+</script>
+</html>
