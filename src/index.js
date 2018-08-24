@@ -30,9 +30,9 @@ function routerAnalyze (res, method, url, query, body) {
   var pArr = path.replace(/^\/api\//, '').split('/')
   console.log('本次路由：', path, pArr)
   // apiDeal[pArr[0]]
-  var res = findFuncFromObj(apiDeal, pArr, 0)
-  if (res) {
-    obj = res()
+  var result = findFuncFromObj(apiDeal, pArr, 0)
+  if (result) {
+    obj = result()
   } else {
     obj.code = 404
     obj.message = 'illegal request!'
@@ -40,6 +40,13 @@ function routerAnalyze (res, method, url, query, body) {
   res.json(obj)
 }
 
+/**
+ * 从对象里面遍历找到最终节点。
+ * @param  {[type]} obj [description]
+ * @param  {[type]} arr [description]
+ * @param  {[type]} idx [description]
+ * @return {[type]}     [description]
+ */
 function findFuncFromObj (obj, arr, idx) {
   console.log('循环次数：', idx, '所查找的数组：', arr[idx], '数组长度：', arr.length, '本次type', typeof obj[arr[idx]])
   if (idx < arr.length) {
@@ -96,9 +103,11 @@ var apiDeal = {
     order: {
       add: function () {
         console.log('guest.order.add')
+        return {code: 200, message: 'success'}
       },
       detail: function () {
         console.log('guest.order.detail')
+        return {code: 200, message: 'success'}
       }
     }
   }
