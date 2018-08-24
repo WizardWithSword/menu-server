@@ -10,6 +10,7 @@ var redisClient = redis.createClient({
   host: '127.0.0.1',
   port: 6379
 });
+var Com = require('./utils/index.js')
 
 app.get('/api', function (req, res) {
   res.send('ca')
@@ -33,20 +34,12 @@ function routerAnalyze (res, method, url, query, body) {
 
   var result = findFuncFromObj(apiDeal, pArr, 0)
   if (result) {
-    switch (method) {
-      case 'POST':
-        result(body).then(function (str) {
-          console.log('处理结束了：', str)
-          res.json(str)
-        })
-      break
-      case 'GET':
-        result(query).then(function (str) {
-          console.log('处理结束了：', str)
-          res.json(str)
-        })
-      break
-    }
+    console.log('开始处理:', body)
+    var p = method === 'POST' ? body : query
+    result(method, p).then(function (str) {
+      console.log('处理结束了：', str)
+      res.json(str)
+    })
   } else {
     obj.code = 404
     obj.message = 'illegal request!'
@@ -57,9 +50,9 @@ function routerAnalyze (res, method, url, query, body) {
 /**
  * 从对象里面遍历找到最终节点。
  * @param  {[type]} obj [description]
- * @param  {[type]} arr [description]
+ * @param  {[type]} arr [路径]
  * @param  {[type]} idx [description]
- * @return {[type]}     [description]
+ * @return {[function null ]}     [返回函数或空]
  */
 function findFuncFromObj (obj, arr, idx) {
   // console.log('循环次数：', idx, '所查找的数组：', arr[idx], '数组长度：', arr.length, '本次type', typeof obj[arr[idx]])
@@ -77,14 +70,64 @@ function findFuncFromObj (obj, arr, idx) {
     return null
   }
 }
+/**
+ * [iskvExistInArrobj: is there a object witch has a key valued val in the array?]
+ * @param  {[type]} arr [array like [{a:'1', b:'2'}, {a:'2'}] ]
+ * @param  {[type]} key [要查询的key]
+ * @param  {[type]} val [要查询的value]
+ * @return {[type]}     [查询结果: true  false]
+ */
+function iskvExistInArrobj (arr, key, val) {
+  var res = false
+  for (var i = 0; i < arr.length; i++) {
+    if(arr[i][key] && arr[i][key] === val) {
+      res = true
+    }
+  }
+  return res
+}
 var apiDeal = {
   shop: {
     user: {
-      login: function (req) {
+      login: function (method,req) {
         return RedisDB.get(req)
       },
-      reg: function (req) {
-        return RedisDB.null()
+      // 用户注册
+      reg: function (method, req) {
+        if (!req.username || !req.password || method !== 'POST') {
+          return RedisDB.null({code: 10003, message: 'Wrong params'})
+        }
+        if (req.username.length < 3 || req.password.length < 5) {
+          return RedisDB.null({code: 10003, message: 'Wrong params'})
+        }
+        console.log('本次要注册的用户的信息是:', req)
+        return RedisDB.get('restaurant_user').then(function (res) {
+          var iscanregist = true // 默认此请求可以注册
+          // 检查是否已存在相关用户
+          if (res && res.length > 0) {
+            iscanregist = !iskvExistInArrobj(res, 'uname', req.username)
+          }
+          if (iscanregist) {
+            var newAll = res || []
+            var obj = {}
+            obj.id = Com.randomMD5Str()
+            obj.uname = req.username
+            obj.pwd = req.password
+            obj.rids = []
+            obj.regT = (new Date()).getTime()
+            newAll.push(obj)
+            return RedisDB.set('restaurant_user', newAll).then(function (saveres) {
+              console.log('redis set的结果:', saveres)
+              if (saveres) {
+                return {code: 200 , message: 'Regeist success!Try login Now~'}
+              } else {
+                return {code: 10002, message: 'There is some error. Please connect the tech! error code:10002'}                
+              }
+            })
+          } else {
+            return {code: 10001, message: 'There is a same name user already. Please change another name and retry again!'}
+          }
+        })
       },
       detail: function () {return RedisDB.null()},
       edit: function () {return RedisDB.null()}
@@ -113,7 +156,7 @@ var apiDeal = {
   },
   guest: {
     menu: {
-      list: function (params) {
+      list: function (method, params) {
         console.log('apiDeal:guest.menu.list:req params->', params)
         var name = 'restaurant_' + params.rid + '_menu'
         return RedisDB.get(name).then(function (res) {
@@ -143,19 +186,25 @@ var apiDeal = {
 }
 
 RedisDB = {
-  null: function () {
+  null: function (obj) {
     return new birdPromise(function (resolve, reject) {
       setTimeout(function () {
-        resolve({code: 1000, message: '接口未开发'})
+        if (obj && obj.code) {
+          resolve(obj)
+        } else {
+          resolve({code: 1000, message: '接口未开发'})
+        }
       }, 300)
     })
   },
   get: function (key) {
-    return redisClient.getAsync(key)
+    return redisClient.getAsync(key).then(function (res) {
+      return JSON.parse(res)
+    })
   },
   set: function (key, value) {
     var str = JSON.stringify(value)
-    return redisClient.setAsync(key, value)
+    return redisClient.setAsync(key, str)
   }
 }
 
