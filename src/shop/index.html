@@ -5,5 +5,274 @@
     <title>商家管理系统</title>
 </head>
 <body>
+<div class="btns">
+<p>商家</p>
+<p>
+  <input type="button" name="reg" value="注册">
+  <input type="button" name="login" value="登录">
+</p>
+<p>
+  <input type="button" name="uinfoDetail" value="查看个人信息">
+  <input type="button" name="uinfoEdit" value="修改个人信息">
+</p>
+<p>
+  <input type="button" name="restDetail" value="查看个人信息">
+  <input type="button" name="restEdit" value="修改个人信息">
+</p>
+<p>
+  <input type="button" name="menuDetail" value="查看菜单信息">
+  <input type="button" name="menuEdit" value="修改菜单信息">
+</p>
+<p>
+  <input type="button" name="deskDetail" value="查看桌号信息">
+  <input type="button" name="deskEdit" value="修改桌号信息">
+</p>
+<p>
+  <input type="button" name="orderEndDetail" value="查看已结束订单信息">
+  <input type="button" name="orderIngDetail" value="查看进行中订单信息">
+  <input type="button" name="orderEdit" value="修改订单状态">
+</p>
+<p>
+
+</p>
+</div>
+<div id="menu"></div>
 </body>
+<script type="text/javascript">
+// ajax 请求
+var apixhr = function (method, url, params) {
+  return this._init(method, url, params)
+}
+apixhr.prototype.done = function (res) {
+}
+apixhr.prototype.fail = function (res) {
+  console.log('请求失败', res)
+}
+apixhr.prototype._init = function (method, url, params) {
+  var that = this
+  var xhr = new XMLHttpRequest();
+  params = params === undefined ? '' : params
+  if (method === 'GET') {
+    var urlparams = '?'
+    Object.keys(params).map(function(key){
+      var tmp = key + '=' + params[key]
+      urlparams += tmp
+      urlparams += '&'
+    })
+    urlparams = urlparams.replace(/&$/, '')
+    url = url + urlparams
+  }
+  xhr.open(method, url, true)
+  xhr.setRequestHeader("Content-type","application/json")
+  // var token = dataLocal.get('tk')
+  // if (token) {
+  //   xhr.setRequestHeader('token', token)
+  // }
+  var promise = new Promise(function (resolve, reject) {
+    xhr.onreadystatechange = function () {
+      switch(xhr.readyState){
+        case 1://OPENED
+          //do something
+              break;
+        case 2://HEADERS_RECEIVED
+          //do something
+          break;
+        case 3://LOADING
+          //do something
+          break;
+        case 4://DONE
+          //do something
+          if (this.status == 200) {
+            that.done(JSON.parse(this.response))
+            resolve(JSON.parse(this.response))
+          } else {
+            that.fail(this)
+            reject(this)
+          }
+          break;
+      }
+    };
+    var body = typeof params === 'string' ? params : JSON.stringify(params)
+    xhr.send(body)
+  })
+  return promise
+}
+function lengthUTF8(str) {
+  var i = 0, code, len = 0;
+  for (; i < str.length; i++) {
+    code = str.charCodeAt(i);
+    if(code == 10){//回车换行问题
+      len += 2;
+    }else if (code < 0x007f) {
+      len += 1;
+    } else if (code >= 0x0080 && code <= 0x07ff) {
+      len += 2;
+    } else if (code >= 0x0800 && code <= 0xffff) {
+      len += 3;
+    }
+  }
+  return len;
+}
+var allApi = {
+  reg: function (params) {
+    return new apixhr('POST', '/api/shop/user/reg', params)
+  },
+  login: function (params) {
+    return new apixhr('POST', '/api/shop/user/login', params)
+  },
+  uinfoDetail: function (params) {
+    return new apixhr('POST', '/api/shop/user/detail', params)
+  },
+  uinfoEdit: function (params) {
+    return new apixhr('POST', '/api/shop/user/edit', params)
+  },
+  restDetail: function (params) {
+    return new apixhr('POST', '/api/shop/restaurants/list', params)
+  },
+  restEdit: function (params) {
+    return new apixhr('POST', '/api/shop/restaurants/edit', params)
+  },
+  menuDetail: function (params) {
+    return new apixhr('POST', '/api/shop/menu/list', params)
+  },
+  menuEdit: function (params) {
+    return new apixhr('POST', '/api/shop/menu/edit', params)
+  },
+  deskDetail: function (params) {
+    return new apixhr('POST', '/api/shop/desk/list', params)
+  },
+  deskEdit: function (params) {
+    return new apixhr('POST', '/api/shop/desk/edit', params)
+  },
+  orderEndDetail: function (params) {
+    return new apixhr('POST', '/api/shop/order/list/end', params)
+  },
+  orderIngDetail: function (params) {
+    return new apixhr('POST', '/api/shop/order/list/ing', params)
+  },
+  orderEdit: function (params) {
+    return new apixhr('POST', '/api/shop/order/edit/status', params)
+  }
+}
+
+var inputs = document.querySelectorAll('input')
+for(var i = 0; i < inputs.length; i++) {
+  inputs[i].addEventListener('click', function (e) {
+    console.log('click', e.target)
+    var key = e.target.getAttribute('name')
+    allFunc[key] && allFunc[key]()
+  })
+}
+var allFunc = {
+  log: function (str) {
+    document.getElementById('menu').innerHTML += '<br>'
+    document.getElementById('menu').innerHTML += JSON.stringify(str)
+  },
+  reg: function (params) {
+    var obj = {
+      username: 'test',
+      password: ''
+    }
+    allApi.reg(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  login: function (params) {
+    var obj = {
+
+    }
+    allApi.login(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  uinfoDetail: function (params) {
+    var obj = {
+
+    }
+    allApi.uinfoDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  uinfoEdit: function (params) {
+    var obj = {
+
+    }
+    allApi.uinfoEdit(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  restDetail: function (params) {
+    var obj = {
+
+    }
+    allApi.restDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  restEdit: function (params) {
+    var obj = {
+
+    }
+    allApi.restEdit(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  menuDetail: function (params) {
+    var obj = {
+
+    }
+    allApi.menuDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  menuEdit: function (params) {
+    var obj = {
+
+    }
+    allApi.menuEdit(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  deskDetail: function (params) {
+    var obj = {
+
+    }
+    allApi.deskDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  deskEdit: function (params) {
+    var obj = {
+
+    }
+    allApi.deskEdit(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  orderEndDetail: function (params) {
+    var obj = {
+
+    }
+    allApi.orderEndDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  orderIngDetail: function (params) {
+    var obj = {
+
+    }
+    allApi.orderIngDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  orderEdit: function (params) {
+    var obj = {
+
+    }
+    allApi.orderEdit(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  }
+}
+</script>
 </html>

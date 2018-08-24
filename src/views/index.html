@@ -5,6 +5,20 @@
     <title>用户点单系统</title>
 </head>
 <body>
+<div class="btns">
+<p>顾客</p>
+<p>
+  <input type="button" name="getMenuLists" value="获取菜单信息">
+</p>
+<p>
+  <input type="button" name="getFoodsOrdered" value="获取已点菜信息">
+</p>
+<p>
+  <input type="button" name="postAddFoods" value="继续加菜">
+</p>
+<p>
+</p>
+</div>
 <div id="menu"></div>
 </body>
 <script type="text/javascript">
@@ -66,7 +80,22 @@ apixhr.prototype._init = function (method, url, params) {
   })
   return promise
 }
-
+function lengthUTF8(str) {
+  var i = 0, code, len = 0;
+  for (; i < str.length; i++) {
+    code = str.charCodeAt(i);
+    if(code == 10){//回车换行问题
+      len += 2;
+    }else if (code < 0x007f) {
+      len += 1;
+    } else if (code >= 0x0080 && code <= 0x07ff) {
+      len += 2;
+    } else if (code >= 0x0800 && code <= 0xffff) {
+      len += 3;
+    }
+  }
+  return len;
+}
 var allApi = {
   getMenuLists: function (params) {
     return new apixhr('GET', '/api/guest/menu/list', params)
@@ -76,31 +105,46 @@ var allApi = {
   },
   postAddFoods: function (params) {
     return new apixhr('POST', '/api/guest/order/add', params)
-  },
-  postTest: function (params) {
-    return new apixhr('POST', '/api2/t', params)
   }
 }
 
-var obj = {
-  rid: 'test'
+var inputs = document.querySelectorAll('input')
+for(var i = 0; i < inputs.length; i++) {
+  inputs[i].addEventListener('click', function (e) {
+    console.log('click', e.target)
+    var key = e.target.getAttribute('name')
+    allFunc[key] && allFunc[key]()
+  })
 }
-allApi.getMenuLists(obj).then(function (res) {
-  document.getElementById('menu').innerHTML += JSON.stringify(res)
-})
-var obj2 = {
-  ss: 'ss2'
+var allFunc = {
+  log: function (str) {
+    document.getElementById('menu').innerHTML += '<br>'
+    document.getElementById('menu').innerHTML += JSON.stringify(str)
+  },
+  getMenuLists: function () {
+    var obj = {
+      rid: 'test'
+    }
+    allApi.getMenuLists(obj).then(function (res) {
+      allFunc.log(res)
+    })    
+  },
+  getFoodsOrdered: function () {
+    var obj3 = {
+      s3: 'ss3'
+    }
+    allApi.getFoodsOrdered(obj3).then(function (res) {
+      allFunc.log(res)
+    })    
+  },
+  postAddFoods: function () {
+    var obj2 = {
+      ss: 'ss2'
+    }
+    allApi.postAddFoods(obj2).then(function (res) {
+      allFunc.log(res)
+    })
+  }
 }
-allApi.postAddFoods(obj2).then(function (res) {
-  document.getElementById('menu').innerHTML += JSON.stringify(res)
-})
-
-var obj3 = {
-  s3: 'ss3'
-}
-allApi.getFoodsOrdered(obj3).then(function (res) {
-  document.getElementById('menu').innerHTML += JSON.stringify(res)
-})
-
 </script>
 </html>
