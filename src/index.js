@@ -3,6 +3,13 @@ var app = express()
 var bodyParser = require('body-parser') // 为了解析post请求的参数
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+var redis = require("redis");
+var birdPromise = require('bluebird');
+birdPromise.promisifyAll(redis);
+var redisClient = redis.createClient({
+  host: '127.0.0.1',
+  port: 6379
+});
 
 app.get('/api', function (req, res) {
   res.send('ca')
@@ -20,24 +27,31 @@ function routerAnalyze (res, method, url, query, body) {
     Deutsch: 'Im Restaurant zu Essen, in der Sich keine: Getränke - menü',
     message: 'success'
   }
-  switch (method) {
-    case 'POST':
-    break
-    case 'GET':
-    break
-  }
   var path = url.split('?')[0]
   var pArr = path.replace(/^\/api\//, '').split('/')
   console.log('本次路由：', path, pArr)
-  // apiDeal[pArr[0]]
+
   var result = findFuncFromObj(apiDeal, pArr, 0)
   if (result) {
-    obj = result()
+    switch (method) {
+      case 'POST':
+        result(body).then(function (str) {
+          console.log('处理结束了：', str)
+          res.json(str)
+        })
+      break
+      case 'GET':
+        result(query).then(function (str) {
+          console.log('处理结束了：', str)
+          res.json(str)
+        })
+      break
+    }
   } else {
     obj.code = 404
     obj.message = 'illegal request!'
+    res.json(obj)
   }
-  res.json(obj)
 }
 
 /**
@@ -48,68 +62,100 @@ function routerAnalyze (res, method, url, query, body) {
  * @return {[type]}     [description]
  */
 function findFuncFromObj (obj, arr, idx) {
-  console.log('循环次数：', idx, '所查找的数组：', arr[idx], '数组长度：', arr.length, '本次type', typeof obj[arr[idx]])
+  // console.log('循环次数：', idx, '所查找的数组：', arr[idx], '数组长度：', arr.length, '本次type', typeof obj[arr[idx]])
   if (idx < arr.length) {
     if (typeof obj[arr[idx]] === 'object') {
       return findFuncFromObj(obj[arr[idx]], arr, idx + 1)
     } else if (typeof obj[arr[idx]] === 'function') {
       return obj[arr[idx]]
     } else {
-      console.log('其他格式的内容：', typeof obj[arr[idx]])
+      console.log('其他格式的数据：', typeof obj[arr[idx]])
       return obj[arr[idx]]
     }
   } else {
-    console.log('查无此内容')
+    console.log('查无此处理方法')
     return null
   }
 }
 var apiDeal = {
   shop: {
     user: {
-      login: function () {},
-      reg: function () {},
-      detail: function () {},
-      edit: function () {}
+      login: function (req) {
+        return RedisDB.get(req)
+      },
+      reg: function (req) {
+        return RedisDB.null()
+      },
+      detail: function () {return RedisDB.null()},
+      edit: function () {return RedisDB.null()}
     },
     restaurants: {
-      list: function () {},
-      edit: function () {}
+      list: function () {return RedisDB.null()},
+      edit: function () {return RedisDB.null()}
     },
     menu: {
-      list: function () {},
-      edit: function () {}
+      list: function () {return RedisDB.null()},
+      edit: function () {return RedisDB.null()}
     },
     desk: {
-      list: function () {},
-      edit: function () {}
+      list: function () {return RedisDB.null()},
+      edit: function () {return RedisDB.null()}
     },
     order: {
       list: {
-        end: function () {},
-        ing: function () {}
+        end: function () {return RedisDB.null()},
+        ing: function () {return RedisDB.null()}
       },
       edit: {
-        status: function () {}
+        status: function () {return RedisDB.null()}
       }
     },
   },
   guest: {
     menu: {
       list: function (params) {
-        console.log('guest.menu.list获取列表', params)
-        return [{}]
+        console.log('apiDeal:guest.menu.list:req params->', params)
+        var name = 'restaurant_' + params.rid + '_menu'
+        return RedisDB.get(name).then(function (res) {
+          console.log('apiDeal:guest.menu.list:then res->', res)
+          var obj = {code: 200, message: 'success'}
+          if (res) {
+            obj.result = JSON.parse(res)
+          } else {
+            obj.result = []
+          }
+          return obj
+        })
       }
     },
     order: {
       add: function () {
         console.log('guest.order.add')
-        return {code: 200, message: 'success'}
+        return RedisDB.get("{code: 200, message: 'success'}")
       },
       detail: function () {
+        var obj = {code: 200, message: 'success'}
+        return RedisDB.get('detail')
         console.log('guest.order.detail')
-        return {code: 200, message: 'success'}
       }
     }
+  }
+}
+
+RedisDB = {
+  null: function () {
+    return new birdPromise(function (resolve, reject) {
+      setTimeout(function () {
+        resolve({code: 1000, message: '接口未开发'})
+      }, 300)
+    })
+  },
+  get: function (key) {
+    return redisClient.getAsync(key)
+  },
+  set: function (key, value) {
+    var str = JSON.stringify(value)
+    return redisClient.setAsync(key, value)
   }
 }
 
