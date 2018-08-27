@@ -65,10 +65,8 @@ apixhr.prototype._init = function (method, url, params) {
   }
   xhr.open(method, url, true)
   xhr.setRequestHeader("Content-type","application/json")
-  // var token = dataLocal.get('tk')
-  // if (token) {
-  //   xhr.setRequestHeader('token', token)
-  // }
+  var token = dataLocal.get('tk')
+  xhr.setRequestHeader('token', token)
   var promise = new Promise(function (resolve, reject) {
     xhr.onreadystatechange = function () {
       switch(xhr.readyState){
@@ -95,7 +93,7 @@ apixhr.prototype._init = function (method, url, params) {
     };
     var body = typeof params === 'string' ? params : JSON.stringify(params)
     var secbodyobj = {}
-    secbodyobj.s = S.enc(body)
+    secbodyobj.s = S.enc(body, token)
     secbody = JSON.stringify(secbodyobj)
     xhr.send(secbody)
   })
@@ -119,10 +117,14 @@ function lengthUTF8(str) {
 }
 var allApi = {
   reg: function (params) {
-    return new apixhr('POST', '/api/shop/user/reg', params)
+    return (new apixhr('POST', '/api/shop/user/reg', params)).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   login: function (params) {
-    return new apixhr('POST', '/api/shop/user/login', params)
+    return new apixhr('POST', '/api/shop/user/login', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   uinfoDetail: function (params) {
     return new apixhr('POST', '/api/shop/user/detail', params)
@@ -158,13 +160,20 @@ var allApi = {
     return new apixhr('POST', '/api/shop/order/edit/status', params)
   }
 }
-var S = {
-  key: "mm",
-  enc: function (obj) {
-    return CryptoJS.AES.encrypt(JSON.stringify(obj), S.key).toString()
+var dataLocal = {
+  get: function (key) {
+    return JSON.parse(window.localStorage.getItem(key))
   },
-  dec: function (str) {
-    return JSON.parse(CryptoJS.AES.decrypt(str, S.key).toString(CryptoJS.enc.Utf8))
+  set: function (key, value) {
+    return window.localStorage.setItem(key, JSON.stringify(value))
+  }
+}
+var S = {
+  enc: function (obj, key) {
+    return CryptoJS.AES.encrypt(JSON.stringify(obj), key).toString()
+  },
+  dec: function (str, key) {
+    return JSON.parse(CryptoJS.AES.decrypt(str, key).toString(CryptoJS.enc.Utf8))
   }
 }
 
@@ -177,9 +186,9 @@ for(var i = 0; i < inputs.length; i++) {
   })
 }
 var allFunc = {
-  log: function (str) {
+  log: function (obj) {
     document.getElementById('menu').innerHTML += '<br>'
-    document.getElementById('menu').innerHTML += JSON.stringify(S.dec(str.s))
+    document.getElementById('menu').innerHTML += JSON.stringify(obj)
   },
   reg: function (params) {
     var obj = {
@@ -192,10 +201,18 @@ var allFunc = {
   },
   login: function (params) {
     var obj = {
-
+      username: 'testname',
+      password: 'testpwd'
     }
-    allApi.login(obj).then(function (res) {
-      allFunc.log(res)
+    allApi.login(obj).then(function (obj) {
+      allFunc.log(obj)
+      if (obj.code === 200) {
+        var token = obj.result.token
+        console.log('登录成功， token是：', token)
+        dataLocal.set('tk', token)
+      } else {
+        window.alert(obj.message)
+      }
     })
   },
   uinfoDetail: function (params) {
@@ -287,5 +304,12 @@ var allFunc = {
     })
   }
 }
+function main () {
+  var token = dataLocal.get('tk')
+  if (token == null) {
+    dataLocal.set('tk', CryptoJS.MD5('undefined').toString())
+  }
+}
+main()
 </script>
 </html>

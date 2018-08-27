@@ -15,37 +15,27 @@ var Com = require('./utils/index.js')
 app.get('/api', function (req, res) {
   res.send('ca')
 })
+
 app.all('/api/*', function (req, res) {
   console.log('req', req.headers.token, req.url, req.method, req.query, req.body)
   var realbody = ''
   console.log('typeof body', typeof req.body)
+  if (req.headers.token == undefined) {
+    res.send('😊')
+    return false
+  }
   if (req.body && req.body.s) {
-    realbody = decrypt(req.body.s)
+    realbody = Com.mydecrypt(req.body.s, req.headers.token)
     console.log('解密后,req.body', typeof realbody, realbody)
   } else {
     console.log('本次不解密', req.body)
     realbody = req.body
   }
-  routerAnalyze(res, req.method, req.url, req.query, realbody)
+  routerAnalyze(res, req.method, req.url, req.query, realbody, req.headers.token)
 })
 
 
-var CryptoJS = require("crypto-js");
-var Skey = 'mm'
-function decrypt (str) {
-  var res = JSON.parse(CryptoJS.AES.decrypt(str, Skey).toString(CryptoJS.enc.Utf8))
-  if (typeof res === 'string') {
-    res = JSON.parse(res)
-  }
-  return res
-}
-function encrypt (obj) {
-  var newobj = {}
-  newobj.s = CryptoJS.AES.encrypt(JSON.stringify(obj), Skey).toString()
-  return newobj
-}
-
-function routerAnalyze (res, method, url, query, body) {
+function routerAnalyze (res, method, url, query, body, token) {
   console.log('analyze')
   var obj = {
     code: 200,
@@ -57,44 +47,21 @@ function routerAnalyze (res, method, url, query, body) {
   var pArr = path.replace(/^\/api\//, '').split('/')
   console.log('本次路由：', path, pArr)
 
-  var result = findFuncFromObj(apiDeal, pArr, 0)
+  var result = Com.findFuncFromObj(apiDeal, pArr, 0)
   if (result) {
     console.log('开始处理:', body)
     var p = method === 'POST' ? body : query
     result(method, p).then(function (obj) {
       console.log('处理结束了：', obj)
-      res.json(encrypt(obj))
+      res.json(Com.myencrypt(obj, token))
     })
   } else {
     obj.code = 404
     obj.message = 'illegal request!'
-    res.json(encrypt(obj))
+    res.json(Com.myencrypt(obj, token))
   }
 }
 
-/**
- * 从对象里面遍历找到最终节点。
- * @param  {[type]} obj [description]
- * @param  {[type]} arr [路径]
- * @param  {[type]} idx [description]
- * @return {[function null ]}     [返回函数或空]
- */
-function findFuncFromObj (obj, arr, idx) {
-  // console.log('循环次数：', idx, '所查找的数组：', arr[idx], '数组长度：', arr.length, '本次type', typeof obj[arr[idx]])
-  if (idx < arr.length) {
-    if (typeof obj[arr[idx]] === 'object') {
-      return findFuncFromObj(obj[arr[idx]], arr, idx + 1)
-    } else if (typeof obj[arr[idx]] === 'function') {
-      return obj[arr[idx]]
-    } else {
-      console.log('其他格式的数据：', typeof obj[arr[idx]])
-      return obj[arr[idx]]
-    }
-  } else {
-    console.log('查无此处理方法')
-    return null
-  }
-}
 /**
  * [iskvExistInArrobj: is there a object witch has a key valued val in the array?]
  * @param  {[type]} arr [array like [{a:'1', b:'2'}, {a:'2'}] ]
@@ -106,7 +73,8 @@ function iskvExistInArrobj (arr, key, val) {
   var res = false
   for (var i = 0; i < arr.length; i++) {
     if(arr[i][key] && arr[i][key] === val) {
-      res = true
+      res = arr[i]
+      break
     }
   }
   return res
@@ -114,13 +82,39 @@ function iskvExistInArrobj (arr, key, val) {
 var apiDeal = {
   shop: {
     user: {
-      login: function (method,req) {
-        return RedisDB.get(req)
+      login: function (method, req) {
+        if (!req.username || !req.password || method !== 'POST') {
+          return RedisDB.null({code: 10003, message: 'Wrong params'})
+        }
+        return RedisDB.get('restaurant_user').then(function (res) {
+          var loginuser = iskvExistInArrobj(res, 'uname', req.username)
+          if (loginuser === false) {
+            return {code:10004, message: 'there is not a user named like that, please regesiter it first'}
+          } else {
+            if (loginuser.pwd !== req.password) {
+              return {code: 10005, message: 'your name and your password is not match'}
+            }
+            // var token = Com.randomMD5Str()
+            var loginresult = {
+              id: loginuser.id,
+              rids: loginuser.rids
+              // token: token
+            }
+            return RedisDB.checkToken({id: loginuser.id}, 'login').then(function (tokenres) {
+              loginresult.token = tokenres.token
+              var obj = {
+                code: 200,
+                message: 'login success',
+                result: loginresult
+              }
+              return obj
+            })
+          }
+        })
       },
       // 用户注册
       reg: function (method, req) {
-        console.log('本次要注册的用户的信息是:', method, req)
-        console.log('本次要注册的用户的信息是:', typeof method, typeof req)
+        console.log('本次要注册的用户的信息是:', method, typeof req, req)
         if (!req.username || !req.password || method !== 'POST') {
           return RedisDB.null({code: 10003, message: 'Wrong params'})
         }
@@ -211,7 +205,7 @@ var apiDeal = {
   }
 }
 
-RedisDB = {
+var RedisDB = {
   null: function (obj) {
     return new birdPromise(function (resolve, reject) {
       setTimeout(function () {
@@ -231,23 +225,47 @@ RedisDB = {
   set: function (key, value) {
     var str = JSON.stringify(value)
     return redisClient.setAsync(key, str)
-  }
+  },
+  /**
+   * check if token expired, if yes, then update expired. if not, add a new token.
+   * @param  {[type]}  obj     [description]
+   * @param  {Boolean} isLogin [in the future,if one's token expired, let him relogin]
+   * @return {[object]}          [{expired:00, token:'token'}]
+   */
+  checkToken: function (obj, isLogin) {
+    var key = 'token_' + obj.id
+    var that = this
+    var expiredTime = 86400000
+    isLogin = isLogin === 'login' ? true : false
+    return this.get(key).then(function (res) {
+      var now = (new Date()).getTime()
+      if (res) {
+        if (res.expired < now) {
+          if (isLogin) {
+            res.expired = now + expiredTime
+            return that.set(key, res).then(function (){
+              return res
+            })
+          } else {
+            return false
+          }
+        } else {
+          return res
+        }
+      } else {
+        var newtoken = {
+          expired: now + expiredTime,
+          token: Com.randomMD5Str()
+        }
+        return that.set(key, newtoken).then(function (){
+          return newtoken
+        })
+      }
+    })
+  },
+  addToken: function () {}
 }
 
-
-// var options = {
-//   dotfiles: 'ignore',
-//   etag: false,
-//   extensions: ['htm', 'html'],
-//   index: 'index.html',
-//   maxAge: '1d',
-//   redirect: false,
-//   setHeaders: function (res, path, stat) {
-//     res.set('x-timestamp', Date.now())
-//   }
-// }
-// // 新增静态模板目录
-// app.use(express.static(__dirname + '/shop', options))
 
 var options = {
   dotfiles: 'ignore',
