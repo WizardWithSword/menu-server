@@ -31,11 +31,11 @@ app.all('/api/*', function (req, res) {
     console.log('本次不解密', req.body)
     realbody = req.body
   }
-  routerAnalyze(res, req.method, req.url, req.query, realbody, req.headers.token)
+  routerAnalyze(res, req.method, req.url, req.query, realbody, req.headers.token, req.headers.auth || '')
 })
 
 
-function routerAnalyze (res, method, url, query, body, token) {
+function routerAnalyze (res, method, url, query, body, token, auth) {
   console.log('analyze')
   var obj = {
     code: 200,
@@ -51,7 +51,7 @@ function routerAnalyze (res, method, url, query, body, token) {
   if (result) {
     console.log('开始处理:', body)
     var p = method === 'POST' ? body : query
-    result(method, p).then(function (obj) {
+    result(method, p, token, auth).then(function (obj) {
       console.log('处理结束了：', obj)
       res.json(Com.myencrypt(obj, token))
     })
@@ -96,11 +96,11 @@ var apiDeal = {
             }
             // var token = Com.randomMD5Str()
             var loginresult = {
-              id: loginuser.id,
+              uid: loginuser.uid,
               rids: loginuser.rids
               // token: token
             }
-            return RedisDB.checkToken({id: loginuser.id}, 'login').then(function (tokenres) {
+            return RedisDB.checkToken({uid: loginuser.uid}, 'login').then(function (tokenres) {
               loginresult.token = tokenres.token
               var obj = {
                 code: 200,
@@ -130,7 +130,7 @@ var apiDeal = {
           if (iscanregist) {
             var newAll = res || []
             var obj = {}
-            obj.id = Com.randomMD5Str()
+            obj.uid = Com.randomMD5Str()
             obj.uname = req.username
             obj.pwd = req.password
             obj.rids = []
@@ -149,12 +149,45 @@ var apiDeal = {
           }
         })
       },
-      detail: function () {return RedisDB.null()},
-      edit: function () {return RedisDB.null()}
+      detail: function (method, req, token) {
+        if (method !== 'GET') {
+          return RedisDB.null({code: 10003, message: 'Wrong params'})
+        }
+        return RedisDB.checkToken({uid: req.uid, token: token}, 'detail').then(function (res){
+          if (res === 'illegal') {
+            return {code: 11000, message: 'you give us a illegal token, are you a hacker?'}
+          }
+          if (res === 'expired') {
+            return {code: 11001, message: 'you have been logined for a long time, please login again.'}
+          }
+          // get all user and select by uid
+          return RedisDB.get('restaurant_user').then(function (res) {
+            var loginuser = iskvExistInArrobj(res, 'uid', req.uid)
+            if (loginuser === false) {
+              return {code:11003, message: 'you give us a illegal userid, are you a hacker?'}
+            } else {
+              var loginresult = {
+                uid: loginuser.uid,
+                name: '', // nick
+                headerImg: '', // 头像
+                rids: loginuser.rids
+              }
+              var obj = {
+                code: 200,
+                message: 'login success',
+                result: loginresult
+              }
+              return obj
+            }
+          })
+        })
+      },
+      edit: function (method, req, token) {return RedisDB.null()}
     },
     restaurants: {
       list: function () {return RedisDB.null()},
-      edit: function () {return RedisDB.null()}
+      add: function (method, req, token, auth) {},
+      edit: function (method, req, token, auth) {return RedisDB.null()}
     },
     menu: {
       list: function () {return RedisDB.null()},
@@ -228,12 +261,12 @@ var RedisDB = {
   },
   /**
    * check if token expired, if yes, then update expired. if not, add a new token.
-   * @param  {[type]}  obj     [description]
+   * @param  {[type]}  obj     [{id:'xx', token:'xx'}]
    * @param  {Boolean} isLogin [in the future,if one's token expired, let him relogin]
    * @return {[object]}          [{expired:00, token:'token'}]
    */
   checkToken: function (obj, isLogin) {
-    var key = 'token_' + obj.id
+    var key = 'token_' + obj.uid
     var that = this
     var expiredTime = 86400000
     isLogin = isLogin === 'login' ? true : false
@@ -246,11 +279,15 @@ var RedisDB = {
             return that.set(key, res).then(function (){
               return res
             })
-          } else {
-            return false
+          } else { // expired token
+            return 'expired'
           }
         } else {
-          return res
+          if (res.token === obj.token) {
+            return res
+          } else { // illegal token
+            return 'illegal'
+          }
         }
       } else {
         var newtoken = {

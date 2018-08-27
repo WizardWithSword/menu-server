@@ -67,6 +67,10 @@ apixhr.prototype._init = function (method, url, params) {
   xhr.setRequestHeader("Content-type","application/json")
   var token = dataLocal.get('tk')
   xhr.setRequestHeader('token', token)
+  var uinfo = dataLocal.get('userinfo')
+  if (uinfo) {
+    xhr.setRequestHeader('auth', uinfo.uid)
+  }
   var promise = new Promise(function (resolve, reject) {
     xhr.onreadystatechange = function () {
       switch(xhr.readyState){
@@ -210,6 +214,7 @@ var allFunc = {
         var token = obj.result.token
         console.log('登录成功， token是：', token)
         dataLocal.set('tk', token)
+        dataLocal.set('userinfo', obj.result)
       } else {
         window.alert(obj.message)
       }
