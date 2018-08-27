@@ -17,8 +17,33 @@ app.get('/api', function (req, res) {
 })
 app.all('/api/*', function (req, res) {
   console.log('req', req.headers.token, req.url, req.method, req.query, req.body)
-  routerAnalyze(res, req.method, req.url, req.query, req.body)
+  var realbody = ''
+  console.log('typeof body', typeof req.body)
+  if (req.body && req.body.s) {
+    realbody = decrypt(req.body.s)
+    console.log('解密后,req.body', typeof realbody, realbody)
+  } else {
+    console.log('本次不解密', req.body)
+    realbody = req.body
+  }
+  routerAnalyze(res, req.method, req.url, req.query, realbody)
 })
+
+
+var CryptoJS = require("crypto-js");
+var Skey = 'mm'
+function decrypt (str) {
+  var res = JSON.parse(CryptoJS.AES.decrypt(str, Skey).toString(CryptoJS.enc.Utf8))
+  if (typeof res === 'string') {
+    res = JSON.parse(res)
+  }
+  return res
+}
+function encrypt (obj) {
+  var newobj = {}
+  newobj.s = CryptoJS.AES.encrypt(JSON.stringify(obj), Skey).toString()
+  return newobj
+}
 
 function routerAnalyze (res, method, url, query, body) {
   console.log('analyze')
@@ -36,14 +61,14 @@ function routerAnalyze (res, method, url, query, body) {
   if (result) {
     console.log('开始处理:', body)
     var p = method === 'POST' ? body : query
-    result(method, p).then(function (str) {
-      console.log('处理结束了：', str)
-      res.json(str)
+    result(method, p).then(function (obj) {
+      console.log('处理结束了：', obj)
+      res.json(encrypt(obj))
     })
   } else {
     obj.code = 404
     obj.message = 'illegal request!'
-    res.json(obj)
+    res.json(encrypt(obj))
   }
 }
 
@@ -94,13 +119,14 @@ var apiDeal = {
       },
       // 用户注册
       reg: function (method, req) {
+        console.log('本次要注册的用户的信息是:', method, req)
+        console.log('本次要注册的用户的信息是:', typeof method, typeof req)
         if (!req.username || !req.password || method !== 'POST') {
           return RedisDB.null({code: 10003, message: 'Wrong params'})
         }
         if (req.username.length < 3 || req.password.length < 5) {
-          return RedisDB.null({code: 10003, message: 'Wrong params'})
+          return RedisDB.null({code: 10003, message: 'Wrong params length'})
         }
-        console.log('本次要注册的用户的信息是:', req)
         return RedisDB.get('restaurant_user').then(function (res) {
           var iscanregist = true // 默认此请求可以注册
           // 检查是否已存在相关用户

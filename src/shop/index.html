@@ -38,6 +38,7 @@
 </div>
 <div id="menu"></div>
 </body>
+<script src="https://cdn.bootcss.com/crypto-js/3.1.9/crypto-js.js"></script>
 <script type="text/javascript">
 // ajax 请求
 var apixhr = function (method, url, params) {
@@ -93,7 +94,10 @@ apixhr.prototype._init = function (method, url, params) {
       }
     };
     var body = typeof params === 'string' ? params : JSON.stringify(params)
-    xhr.send(body)
+    var secbodyobj = {}
+    secbodyobj.s = S.enc(body)
+    secbody = JSON.stringify(secbodyobj)
+    xhr.send(secbody)
   })
   return promise
 }
@@ -154,6 +158,15 @@ var allApi = {
     return new apixhr('POST', '/api/shop/order/edit/status', params)
   }
 }
+var S = {
+  key: "mm",
+  enc: function (obj) {
+    return CryptoJS.AES.encrypt(JSON.stringify(obj), S.key).toString()
+  },
+  dec: function (str) {
+    return JSON.parse(CryptoJS.AES.decrypt(str, S.key).toString(CryptoJS.enc.Utf8))
+  }
+}
 
 var inputs = document.querySelectorAll('input')
 for(var i = 0; i < inputs.length; i++) {
@@ -166,7 +179,7 @@ for(var i = 0; i < inputs.length; i++) {
 var allFunc = {
   log: function (str) {
     document.getElementById('menu').innerHTML += '<br>'
-    document.getElementById('menu').innerHTML += JSON.stringify(str)
+    document.getElementById('menu').innerHTML += JSON.stringify(S.dec(str.s))
   },
   reg: function (params) {
     var obj = {
