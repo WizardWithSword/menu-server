@@ -16,8 +16,9 @@
   <input type="button" name="uinfoEdit" value="修改个人信息">
 </p>
 <p>
-  <input type="button" name="restDetail" value="查看个人信息">
-  <input type="button" name="restEdit" value="修改个人信息">
+  <input type="button" name="restAdd" value="新增餐厅">
+  <input type="button" name="restDetail" value="查看餐厅信息">
+  <input type="button" name="restEdit" value="修改餐厅信息">
 </p>
 <p>
   <input type="button" name="menuDetail" value="查看菜单信息">
@@ -131,37 +132,64 @@ var allApi = {
     })
   },
   uinfoDetail: function (params) {
-    return new apixhr('POST', '/api/shop/user/detail', params)
+    return new apixhr('POST', '/api/shop/user/detail', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   uinfoEdit: function (params) {
-    return new apixhr('POST', '/api/shop/user/edit', params)
+    return new apixhr('POST', '/api/shop/user/edit', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
+  },
+  restAdd: function (params) {
+    return new apixhr('POST', '/api/shop/restaurants/add', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   restDetail: function (params) {
-    return new apixhr('POST', '/api/shop/restaurants/list', params)
+    return new apixhr('POST', '/api/shop/restaurants/list', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   restEdit: function (params) {
-    return new apixhr('POST', '/api/shop/restaurants/edit', params)
+    return new apixhr('POST', '/api/shop/restaurants/edit', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   menuDetail: function (params) {
-    return new apixhr('POST', '/api/shop/menu/list', params)
+    return new apixhr('POST', '/api/shop/menu/list', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   menuEdit: function (params) {
-    return new apixhr('POST', '/api/shop/menu/edit', params)
+    return new apixhr('POST', '/api/shop/menu/edit', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   deskDetail: function (params) {
-    return new apixhr('POST', '/api/shop/desk/list', params)
+    return new apixhr('POST', '/api/shop/desk/list', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   deskEdit: function (params) {
-    return new apixhr('POST', '/api/shop/desk/edit', params)
+    return new apixhr('POST', '/api/shop/desk/edit', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   orderEndDetail: function (params) {
-    return new apixhr('POST', '/api/shop/order/list/end', params)
+    return new apixhr('POST', '/api/shop/order/list/end', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   orderIngDetail: function (params) {
-    return new apixhr('POST', '/api/shop/order/list/ing', params)
+    return new apixhr('POST', '/api/shop/order/list/ing', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   orderEdit: function (params) {
-    return new apixhr('POST', '/api/shop/order/edit/status', params)
+    return new apixhr('POST', '/api/shop/order/edit/status', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   }
 }
 var dataLocal = {
@@ -236,9 +264,16 @@ var allFunc = {
       allFunc.log(res)
     })
   },
+  restAdd: function (params) {
+    var obj = {
+      name: '晚霞'
+    }
+    allApi.restDetail(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
   restDetail: function (params) {
     var obj = {
-
     }
     allApi.restDetail(obj).then(function (res) {
       allFunc.log(res)

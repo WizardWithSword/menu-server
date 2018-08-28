@@ -101,6 +101,7 @@ var apiDeal = {
               // token: token
             }
             return RedisDB.checkToken({uid: loginuser.uid}, 'login').then(function (tokenres) {
+              console.log('login check token:', tokenres)
               loginresult.token = tokenres.token
               var obj = {
                 code: 200,
@@ -185,9 +186,37 @@ var apiDeal = {
       edit: function (method, req, token) {return RedisDB.null()}
     },
     restaurants: {
-      list: function () {return RedisDB.null()},
-      add: function (method, req, token, auth) {},
-      edit: function (method, req, token, auth) {return RedisDB.null()}
+      list: function (method, req, token, uid) {
+        if (method !== 'POST') {
+          return RedisDB.null({code: 10003, message: 'Wrong params'})
+        }
+        return RedisDB.checkToken({uid: uid, token: token}, 'restList').then(function (tokenres) {
+          if (tokenres === 'illegal') {
+            return {code: 11000, message: 'you give us a illegal token, are you a hacker?'}
+          }
+          if (tokenres === 'expired') {
+            return {code: 11001, message: 'you have been logined for a long time, please login again.'}
+          }
+          return RedisDB.get('restaurant_user').then(function (userres) {
+            var loginuser = iskvExistInArrobj(userres, 'uid', uid)
+            if (loginuser === false) {
+              return {code:10004, message: 'that is a illegal uid'}
+            } else {
+              var loginresult = {
+                rids: loginuser.rids
+              }
+              var obj = {
+                code: 200,
+                message: 'get restaurants successed',
+                result: loginresult
+              }
+              return obj
+            }
+          })
+        })
+      },
+      add: function (method, req, token, uid) {},
+      edit: function (method, req, token, uid) {return RedisDB.null()}
     },
     menu: {
       list: function () {return RedisDB.null()},
@@ -269,12 +298,12 @@ var RedisDB = {
     var key = 'token_' + obj.uid
     var that = this
     var expiredTime = 86400000
-    isLogin = isLogin === 'login' ? true : false
+    var logincheck = isLogin === 'login' ? true : false
     return this.get(key).then(function (res) {
       var now = (new Date()).getTime()
       if (res) {
         if (res.expired < now) {
-          if (isLogin) {
+          if (logincheck) {
             res.expired = now + expiredTime
             return that.set(key, res).then(function (){
               return res
@@ -283,10 +312,14 @@ var RedisDB = {
             return 'expired'
           }
         } else {
-          if (res.token === obj.token) {
+          if (logincheck) {
             return res
-          } else { // illegal token
-            return 'illegal'
+          } else {
+            if (res.token === obj.token) {
+              return res
+            } else { // illegal token
+              return 'illegal'
+            }
           }
         }
       } else {

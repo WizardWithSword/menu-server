@@ -49,9 +49,11 @@ GET
 ''
 {
   code: 200,
-  result: [{
-    rid:''
-  }]
+  result: {
+    rids:[{
+      rid:''
+    }]
+  }
 }
 1.2.2、/shop/restaurants/add 新建一个餐厅
 POST
