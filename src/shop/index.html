@@ -17,7 +17,8 @@
 </p>
 <p>
   <input type="button" name="restAdd" value="新增餐厅">
-  <input type="button" name="restDetail" value="查看餐厅信息">
+  <input type="button" name="restList" value="获取餐厅id">
+  <input type="button" name="restDetail" value="查看餐厅详情信息">
   <input type="button" name="restEdit" value="修改餐厅信息">
 </p>
 <p>
@@ -132,7 +133,7 @@ var allApi = {
     })
   },
   uinfoDetail: function (params) {
-    return new apixhr('POST', '/api/shop/user/detail', params).then(function (res) {
+    return new apixhr('GET', '/api/shop/user/detail', params).then(function (res) {
       return S.dec(res.s, dataLocal.get('tk'))
     })
   },
@@ -146,8 +147,13 @@ var allApi = {
       return S.dec(res.s, dataLocal.get('tk'))
     })
   },
-  restDetail: function (params) {
+  restList: function (params) {
     return new apixhr('POST', '/api/shop/restaurants/list', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
+  },
+  restDetail: function (params) {
+    return new apixhr('GET', '/api/shop/restaurants/detail', params).then(function (res) {
       return S.dec(res.s, dataLocal.get('tk'))
     })
   },
@@ -157,7 +163,7 @@ var allApi = {
     })
   },
   menuDetail: function (params) {
-    return new apixhr('POST', '/api/shop/menu/list', params).then(function (res) {
+    return new apixhr('GET', '/api/shop/menu/list', params).then(function (res) {
       return S.dec(res.s, dataLocal.get('tk'))
     })
   },
@@ -167,7 +173,7 @@ var allApi = {
     })
   },
   deskDetail: function (params) {
-    return new apixhr('POST', '/api/shop/desk/list', params).then(function (res) {
+    return new apixhr('GET', '/api/shop/desk/list', params).then(function (res) {
       return S.dec(res.s, dataLocal.get('tk'))
     })
   },
@@ -219,6 +225,8 @@ for(var i = 0; i < inputs.length; i++) {
 }
 var allFunc = {
   log: function (obj) {
+    console.log('获取到的数据类型：', typeof obj)
+    console.log('获取到的数据内容：', obj)
     document.getElementById('menu').innerHTML += '<br>'
     document.getElementById('menu').innerHTML += JSON.stringify(obj)
   },
@@ -268,12 +276,20 @@ var allFunc = {
     var obj = {
       name: '晚霞'
     }
-    allApi.restDetail(obj).then(function (res) {
+    allApi.restAdd(obj).then(function (res) {
+      allFunc.log(res)
+    })
+  },
+  restList: function (params) {
+    var obj = {
+    }
+    allApi.restList(obj).then(function (res) {
       allFunc.log(res)
     })
   },
   restDetail: function (params) {
     var obj = {
+      rid: '62F2677C6172DD7D313D76C5F6E4DE74'
     }
     allApi.restDetail(obj).then(function (res) {
       allFunc.log(res)
@@ -281,7 +297,6 @@ var allFunc = {
   },
   restEdit: function (params) {
     var obj = {
-
     }
     allApi.restEdit(obj).then(function (res) {
       allFunc.log(res)
@@ -289,7 +304,7 @@ var allFunc = {
   },
   menuDetail: function (params) {
     var obj = {
-
+      rid: '62F2677C6172DD7D313D76C5F6E4DE74'
     }
     allApi.menuDetail(obj).then(function (res) {
       allFunc.log(res)
@@ -297,7 +312,25 @@ var allFunc = {
   },
   menuEdit: function (params) {
     var obj = {
-
+      rid: '62F2677C6172DD7D313D76C5F6E4DE74',
+      menu: [{
+        type: '开胃', // 菜品类型：开胃菜。
+        title: '小菜', // 菜品类型描述
+        imgurl: '', // 类型配图
+        foods: [{ // 此类型下所有的菜
+          fid: '112', // 菜id
+          name: '腌黄瓜', // 菜名。
+          desc: '', // 菜的描述
+          size: '200ml', // 默认量
+          price: '300', // 默认价格
+          imgurl: '', // 图片
+          status: '10', // 菜品当前状态。10:正常。11:招牌菜。 -1:不可下单。-2:下架。
+          standard: [{ // 菜品不同规格
+            size: '', // 此规格的大小或重量。 .5L  .25ml
+            price: '' // 此规格的价格
+          }]
+        }]
+      }]
     }
     allApi.menuEdit(obj).then(function (res) {
       allFunc.log(res)
@@ -305,7 +338,7 @@ var allFunc = {
   },
   deskDetail: function (params) {
     var obj = {
-
+      rid: '62F2677C6172DD7D313D76C5F6E4DE74'
     }
     allApi.deskDetail(obj).then(function (res) {
       allFunc.log(res)
@@ -313,7 +346,8 @@ var allFunc = {
   },
   deskEdit: function (params) {
     var obj = {
-
+      rid: '62F2677C6172DD7D313D76C5F6E4DE74',
+      deskids: ['A2', 'B']
     }
     allApi.deskEdit(obj).then(function (res) {
       allFunc.log(res)

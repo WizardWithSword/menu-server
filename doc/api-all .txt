@@ -223,6 +223,69 @@ redis data format:
   uname: '', // 登录账号
   pwd: '', // 登录密码
   regT: 100, // 注册时间
-  rids: [] // 此用户的餐厅信息
+  rids: [] // 此用户的餐厅id信息
 }]
+
+2,restaurant_{{rid}}_info
+{
+  id: '',
+  name: '', // 名字
+  currency: '', // 货币单位
+  dec: '', // 简要介绍
+  images: [], // 店铺图片
+  deskids:[]
+}
+
+3，restaurant_{{rid}}_menu
+1.3.2
+[{
+  type: '', // 菜品类型：开胃菜。
+  title: '', // 菜品类型描述
+  imgurl: '', // 类型配图
+  foods: [{ // 此类型下所有的菜
+    fid: '', // 菜id
+    name: '', // 菜名。
+    desc: '', // 菜的描述
+    size: '', // 默认量
+    price: '', // 默认价格
+    imgurl: '', // 图片
+    status: '', // 菜品当前状态。10:正常。11:招牌菜。 -1:不可下单。-2:下架。
+    standard: [{ // 菜品不同规格
+      size: '', // 此规格的大小或重量。 .5L  .25ml
+      price: '' // 此规格的价格
+    }]
+  }]
+}]
+
+4，restaurant_{{rid}}_order_end
+[{
+  did:'',
+  time: '',
+  order: [{
+    fid:'',
+    price: ''
+  }, {
+    fid:'',
+    price: ''
+  }]
+}, {}]
+
+
+5、restaurant_{{rid}}_order_ing
+[{
+  did:'',
+  time: '',
+  order: [{
+    status:'',
+    fid:'',
+    price: ''
+  }, {
+    status:'',
+    fid:'',
+    price: ''
+  }]
+}, {}]
+
+
+
 
