@@ -271,20 +271,23 @@ redis data format:
 }, {}]
 
 
-5、restaurant_{{rid}}_order_ing
-[{
-  did:'',
+5、restaurant_{{rid}}_order_ing_{{did}}
+{
+  oid:'',
+  status:'',
   time: '',
+  remark: '',
   order: [{
     status:'',
     fid:'',
+    ordertime: '',
     price: ''
   }, {
     status:'',
     fid:'',
     price: ''
   }]
-}, {}]
+}
 
 
 

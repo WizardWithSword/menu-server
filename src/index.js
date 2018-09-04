@@ -417,77 +417,153 @@ var apiDeal = {
     order: {
       list: {
         end: function (method, req, token, uid) {
-          if (method !== 'GET' || !req.rid) {
+          if (method !== 'POST' || !req.rid) {
             return RedisDB.null({code: 10003, message: 'Wrong params'})
           }
           var key = 'restaurant_{{rid}}_order_end'.replace('{{rid}}', req.rid)
-          return RedisDB.get(key).then(function (resdetail) {
+          var page = req.page ? req.page - 0 : 1
+          var pagesize = req.pagesize ? req.pagesize - 0 : 10
+          return RedisDB.listget(key, page, pagesize).then(function (resdetail) {
             if (resdetail) {
-              var deskids = resdetail.deskids
-              return {code: 200, message: 'success', result: deskids}
+              return {code: 200, message: 'success', result: resdetail}
             } else {
-              return {code:10011, message: 'please connect the tech, it seams that the restaurant id is wrong...' + req.rid}
+              return {code: 200, message: 'success, but no data there', result: []}
+              // return {code:10011, message: 'please connect the tech, it seams that the restaurant id is wrong...' + req.rid}
             }
           })
         },
         ing: function (method, req, token, uid) {
-          if (method !== 'GET' || !req.rid) {
+          if (method !== 'POST' || !req.rid || !req.did) {
             return RedisDB.null({code: 10003, message: 'Wrong params'})
           }
-          var key = 'restaurant_{{rid}}_order_ing'.replace('{{rid}}', req.rid)
-          return RedisDB.get(key).then(function (resdetail) {
+          var key = 'restaurant_{{rid}}_order_ing_{{did}}'.replace('{{rid}}', req.rid).replace('{{did}}', req.did)
+          return RedisDB.myarrget(key).then(function (resdetail) {
             if (resdetail) {
               return {code: 200, message: 'success', result: resdetail}
             } else {
-              return {code:10011, message: 'please connect the tech, it seams that the restaurant id is wrong...' + req.rid}
+              return {code: 200, message: 'success, but no data there', result: []}
+              // return {code:10011, message: 'please connect the tech, it seams that the restaurant id is wrong...' + req.rid}
             }
           })
         }
       },
       edit: {
+        /**
+         *  1、商家标记开始制作markStart。2、商家标记某道菜已上finishOne。 3、商家标记菜已上完 completion。 4、结账本次用餐完毕checkout。
+         * @param  {[type]} method [description]
+         * @param  {[type]} req    [description]
+         * @param  {[type]} token  [description]
+         * @param  {[type]} uid    [description]
+         * @return {[type]}        [description]
+         */
         status: function (method, req, token, uid) {
           var obj = {
-            test: 'sdfsfa',
-            wode: 3
+            action: 'markstart',
+            rid: '',
+            did: '',
+            fid: '',
+            actionid: Com.randomMD5Str()
           }
-          return RedisDB.listadd('order1', obj).then(function (res) {
-            console.log('list order push success', typeof res, res)
-            if (res) {
-              return RedisDB.listget('order1', 1, 5)
+          var key = 'restaurant_{{rid}}_order_ing_{{did}}'.replace('{{rid}}', req.rid).replace('{{did}}', req.did)
+          return RedisDB.get(key).then(function (getres) {
+            if (getres && getres.oid) {
+              switch (req.action) {
+                case 'markstart':
+                getres.status = 'markstart'
+                // set restaurant_{{rid}}_order_ing_{{did}} getres
+                break
+                case 'finishOne':
+                // find fid
+                // change fid status
+                // set restaurant_{{rid}}_order_ing_{{did}} getres
+                break
+                case 'completion':
+                getres.status = 'completion'
+                // set restaurant_{{rid}}_order_ing_{{did}} getres
+                break
+                case 'checkout':
+                getres.status = 'checkout'
+                // set restaurant_{{rid}}_order_ing_{{did}} {}
+                // lpush restaurant_{{rid}}_order_end getres
+                break
+                default:
+                return {code: 10021, message: 'the function is in developeing...'}
+                break
+              }
             } else {
-              return {code: 222, message: 'list push error'}
+              return {code: 10020, message: 'there is no food status need to be change, please refresh the page and check new order'}
             }
           })
+          // return RedisDB.listadd('order1', obj).then(function (res) {
+          //   console.log('list order push success', typeof res, res)
+          //   if (res) {
+          //     return RedisDB.listget('order1', 1, 5).then(function (getres) {
+          //       return {code: 200, message: 'success', result: getres}
+          //     })
+          //   } else {
+          //     return {code: 222, message: 'list push error'}
+          //   }
+          // })
         }
       }
     },
   },
   guest: {
     menu: {
-      list: function (method, params) {
+      list: function (method, req, token, uid) {
         console.log('apiDeal:guest.menu.list:req params->', params)
         var name = 'restaurant_' + params.rid + '_menu'
         return RedisDB.get(name).then(function (res) {
           console.log('apiDeal:guest.menu.list:then res->', res)
           var obj = {code: 200, message: 'success'}
           if (res) {
-            obj.result = JSON.parse(res)
+            obj.result = res
           } else {
-            obj.result = []
+            obj = {code: 10015, message: 'there is not any menu, ask the restaurateur if there is something wrong'}
           }
           return obj
         })
       }
     },
     order: {
+      /**
+       * add a new order to restaurant_{{rid}}_order_ing_{{did}}
+       * @param {[type]} method [description]
+       * @param {[type]} req    [description]
+       * @param {[type]} token  [description]
+       * @param {[type]} uid    [description]
+       */
       add: function (method, req, token, uid) {
         console.log('guest.order.add')
         // req = {
         //   rid: '',
         //   did: '',
-        //   type: 'add',
+        //   remark: '',
         //   order: ['fid', 'fid']
         // }
+        var key = 'restaurant_{{rid}}_order_ing_{{did}}'.replace('{{rid}}', req.rid).replace('{{did}}', req.did)
+        return RedisDB.get(key).then(function (res) {
+          var newvalue = res || {}
+          newvalue.order = res.order || []
+          newvalue.remark += req.remark || ''
+          newvalue.remark += ' '
+          // 如果订单之前没有时间，加一个
+          newvalue.time = newvalue.time || (new Date()).getTime()
+          newvalue.oid = newvalue.oid || Com.randomMD5Str()
+          if (req.order && req.order.length) {
+            for (var i = 0; i < req.order.length; i++) {
+              req.order[i].ordertime = (new Date()).getTime()
+              newvalue.order.push(req.order[i])
+            }
+          }
+          return RedisDB.set(key, newvalue).then(function (setres) {
+            if (setres) {
+              return {code: 200, message: 'success', result: newvalue}
+            } else {
+              return {code: 20001, message: 'submit order failed, please refresh the page and submit again'}
+            }
+          })
+        })
         return RedisDB.get("{code: 200, message: 'success'}")
       },
       detail: function (method, req, token, uid) {
@@ -495,10 +571,11 @@ var apiDeal = {
         //   rid: '',
         //   did: ''
         // }
-        // [{fid: ''}, {fid: ''}]
-        var obj = {code: 200, message: 'success'}
-        return RedisDB.get('detail')
-        console.log('guest.order.detail')
+        // {order:[{fid: ''}, {fid: ''}]}
+        var key = 'restaurant_{{rid}}_order_ing_{{did}}'.replace('{{rid}}', req.rid).replace('{{did}}', req.did)
+        return RedisDB.get(key).then(function (res) {
+          return {code: 200, message: 'success', result: res}
+        })
       }
     }
   }
@@ -514,6 +591,19 @@ var RedisDB = {
           resolve({code: 10003, message: '接口未开发'})
         }
       }, 300)
+    })
+  },
+  myarrget: function (key) {
+    return redisClient.keysAsync(key + '*').then(function (res) {
+      console.log('keys key*的结果:', key, typeof res, res)
+      if (res && res.length) {
+        return redisClient.mgetAsync(res).then(function (getres){
+          console.log('mget arr的结果', typeof getres, getres)
+          return getres || []
+        })
+      } else {
+        return []
+      }
     })
   },
   get: function (key) {
@@ -545,12 +635,20 @@ var RedisDB = {
     return redisClient.lpushAsync(key, str)
   },
   listget: function (key, page, pagesize) {
-    var start = (page - 1) * (pagesize - 0)
-    var end = start + (pagesize - 0)
+    page = page ? parseInt(page) : 1
+    pagesize = pagesize ? parseInt(pagesize) : 10
+    var start = (page - 1) * pagesize
+    var end = start + pagesize
     return redisClient.lrangeAsync(key, start, end).then(function (res) {
       console.log('获取到的数据内容：', typeof res, res)
       console.log('res的length', res.length)
-      return res
+      var parseRes = []
+      if (res) {
+        for(var i = 0; i < res.length; i++) {
+          parseRes.push(JSON.parse(res[i]))
+        }
+      }
+      return parseRes
     })
   },
   /**
