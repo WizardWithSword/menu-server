@@ -506,13 +506,13 @@ var apiDeal = {
           // })
         }
       }
-    },
+    }
   },
   guest: {
     menu: {
       list: function (method, req, token, uid) {
-        console.log('apiDeal:guest.menu.list:req params->', params)
-        var name = 'restaurant_' + params.rid + '_menu'
+        console.log('apiDeal:guest.menu.list:req->', req)
+        var name = 'restaurant_' + req.rid + '_menu'
         return RedisDB.get(name).then(function (res) {
           console.log('apiDeal:guest.menu.list:then res->', res)
           var obj = {code: 200, message: 'success'}
@@ -534,6 +534,9 @@ var apiDeal = {
        * @param {[type]} uid    [description]
        */
       add: function (method, req, token, uid) {
+        if (method !== 'POST' || !req.rid || !req.did) {
+          return RedisDB.null({code: 10003, message: 'Wrong params'})
+        }
         console.log('guest.order.add')
         // req = {
         //   rid: '',
@@ -544,7 +547,7 @@ var apiDeal = {
         var key = 'restaurant_{{rid}}_order_ing_{{did}}'.replace('{{rid}}', req.rid).replace('{{did}}', req.did)
         return RedisDB.get(key).then(function (res) {
           var newvalue = res || {}
-          newvalue.order = res.order || []
+          newvalue.order = newvalue.order || []
           newvalue.remark += req.remark || ''
           newvalue.remark += ' '
           // 如果订单之前没有时间，加一个
@@ -574,7 +577,7 @@ var apiDeal = {
         // {order:[{fid: ''}, {fid: ''}]}
         var key = 'restaurant_{{rid}}_order_ing_{{did}}'.replace('{{rid}}', req.rid).replace('{{did}}', req.did)
         return RedisDB.get(key).then(function (res) {
-          return {code: 200, message: 'success', result: res}
+          return {code: 200, message: 'success', result: res || []}
         })
       }
     }

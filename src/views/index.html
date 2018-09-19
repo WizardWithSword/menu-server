@@ -21,6 +21,7 @@
 </div>
 <div id="menu"></div>
 </body>
+<script src="https://cdn.bootcss.com/crypto-js/3.1.9/crypto-js.js"></script>
 <script type="text/javascript">
 // ajax 请求
 var apixhr = function (method, url, params) {
@@ -47,10 +48,13 @@ apixhr.prototype._init = function (method, url, params) {
   }
   xhr.open(method, url, true)
   xhr.setRequestHeader("Content-type","application/json")
-  // var token = dataLocal.get('tk')
-  // if (token) {
-  //   xhr.setRequestHeader('token', token)
-  // }
+  xhr.setRequestHeader("Content-type","application/json")
+  var token = dataLocal.get('tk')
+  xhr.setRequestHeader('token', token)
+  var uinfo = dataLocal.get('userinfo')
+  if (uinfo) {
+    xhr.setRequestHeader('auth', uinfo.uid)
+  }
   var promise = new Promise(function (resolve, reject) {
     xhr.onreadystatechange = function () {
       switch(xhr.readyState){
@@ -75,36 +79,47 @@ apixhr.prototype._init = function (method, url, params) {
           break;
       }
     };
+    // var body = typeof params === 'string' ? params : JSON.stringify(params)
+    // xhr.send(body)
     var body = typeof params === 'string' ? params : JSON.stringify(params)
-    xhr.send(body)
+    var secbodyobj = {}
+    secbodyobj.s = S.enc(body, token)
+    secbody = JSON.stringify(secbodyobj)
+    xhr.send(secbody)
   })
   return promise
 }
-function lengthUTF8(str) {
-  var i = 0, code, len = 0;
-  for (; i < str.length; i++) {
-    code = str.charCodeAt(i);
-    if(code == 10){//回车换行问题
-      len += 2;
-    }else if (code < 0x007f) {
-      len += 1;
-    } else if (code >= 0x0080 && code <= 0x07ff) {
-      len += 2;
-    } else if (code >= 0x0800 && code <= 0xffff) {
-      len += 3;
-    }
-  }
-  return len;
-}
+// function lengthUTF8(str) {
+//   var i = 0, code, len = 0;
+//   for (; i < str.length; i++) {
+//     code = str.charCodeAt(i);
+//     if(code == 10){//回车换行问题
+//       len += 2;
+//     }else if (code < 0x007f) {
+//       len += 1;
+//     } else if (code >= 0x0080 && code <= 0x07ff) {
+//       len += 2;
+//     } else if (code >= 0x0800 && code <= 0xffff) {
+//       len += 3;
+//     }
+//   }
+//   return len;
+// }
 var allApi = {
   getMenuLists: function (params) {
-    return new apixhr('GET', '/api/guest/menu/list', params)
+    return new apixhr('GET', '/api/guest/menu/list', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   getFoodsOrdered: function (params) {
-    return new apixhr('GET', '/api/guest/order/detail', params)
+    return new apixhr('GET', '/api/guest/order/detail', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   },
   postAddFoods: function (params) {
-    return new apixhr('POST', '/api/guest/order/add', params)
+    return new apixhr('POST', '/api/guest/order/add', params).then(function (res) {
+      return S.dec(res.s, dataLocal.get('tk'))
+    })
   }
 }
 
@@ -146,5 +161,29 @@ var allFunc = {
     })
   }
 }
+var dataLocal = {
+  get: function (key) {
+    return JSON.parse(window.localStorage.getItem(key))
+  },
+  set: function (key, value) {
+    return window.localStorage.setItem(key, JSON.stringify(value))
+  }
+}
+var S = {
+  enc: function (obj, key) {
+    return CryptoJS.AES.encrypt(JSON.stringify(obj), key).toString()
+  },
+  dec: function (str, key) {
+    return JSON.parse(CryptoJS.AES.decrypt(str, key).toString(CryptoJS.enc.Utf8))
+  }
+}
+
+function main () {
+  var token = dataLocal.get('tk')
+  if (token == null) {
+    dataLocal.set('tk', CryptoJS.MD5('undefined').toString())
+  }
+}
+main()
 </script>
 </html>
