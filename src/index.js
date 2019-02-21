@@ -278,7 +278,7 @@ var apiDeal = {
         return RedisDB.get(key).then(function (resdetail) {
           console.log('获取到的餐厅详情:', resdetail)
           if (resdetail) {
-            return resdetail
+            return {code:200, message: 'success', result: resdetail}
           } else {
             return {code: 10008, message: 'there is something wrong about the restaurant id, please add a new one'}
             // var newRest = {}
